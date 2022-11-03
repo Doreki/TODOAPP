@@ -45,10 +45,17 @@ app.get('/write', (req, resp) => {
 
 app.post('/add', (req,resp) => {
   resp.send('전송완료');
-  console.log(req.body.date);
-  console.log(req.body.title);
-  db.collection('post').insertOne({title:req.body.title, date:req.body.date},(err,result) => {
-    console.log("todo 저장완료");
+  db.collection('counter').findOne({name : 'totalPosts'}, (err,result) => {
+    console.log(result.totalPosts);
+    const totalCount = result.totalCount;
+
+    db.collection('post').insertOne({_id:totalCount+1, title:req.body.title, date:req.body.date},(err,result) => {
+      console.log("todo 저장완료");
+      db.collection('counter').updateOne({name:'totalPosts'},{ $inc : {totalCount:1}},(err, result) => {
+          if(err) {return console.log(err)}
+      })
+    });
+
   });
 });
 
@@ -60,3 +67,11 @@ app.get('/list', (req,resp) => {
   });
 
 });
+
+app.delete('/delete', (req, resp) => {
+  console.log(req.body);
+  req.body._id = parseInt(req.body._id);
+  db.collection('post').deleteOne(req.body, (err,result) => {
+    console.log('삭제완료');
+  })
+})
