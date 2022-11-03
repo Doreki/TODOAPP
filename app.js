@@ -3,13 +3,16 @@ const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended : true}));
 const MongoClient = require('mongodb').MongoClient;
+const methodOverride = require('method-override');
+app.use(methodOverride('_method'));
+
 app.set('view engine', 'ejs');
 
-
+app.use('/public', express.static('public'));
 var db;
 MongoClient.connect('mongodb+srv://admin:qwer1234@cluster0.nn1apzs.mongodb.net/?retryWrites=true&w=majority', (err, client) => {
 
-if(err) return console.log(에러);
+if(err) return console.log(err);
 
 db = client.db('todoapp');
 
@@ -36,11 +39,11 @@ app.get('/beauty', (req, resp) => {
 });
 
 app.get('/', (req, resp) => {
-  resp.sendFile(__dirname + '/index.html');
+  resp.render('index.ejs');
 });
 
 app.get('/write', (req, resp) => {
-  resp.sendFile(__dirname + '/write.html');
+  resp.render('write.ejs');
 });
 
 app.post('/add', (req,resp) => {
@@ -73,5 +76,36 @@ app.delete('/delete', (req, resp) => {
   req.body._id = parseInt(req.body._id);
   db.collection('post').deleteOne(req.body, (err,result) => {
     console.log('삭제완료');
+    resp.status(200).send({ message : '성공했습니다.'});
+  })
+});
+
+app.get('/detail/:id', (req, resp) => {
+  
+    db.collection('post').findOne({_id: parseInt(req.params.id)}, (err, result)=>{
+      if(result == null) {
+        resp.send('해당 게시물이 없습니다.');
+      } else {
+        console.log(result);
+        resp.render('detail.ejs', { data : result});
+      }
+    });
+})
+
+app.get('/edit/:id', (req,resp) => {
+  db.collection('post').findOne({_id : parseInt(req.params.id)}, (err,result) => {
+    if(result == null) {
+      resp.send('해당 게시글이 존재하지 않습니다.');      
+    } else {
+      console.log(result);
+      resp.render('edit.ejs', { post : result});
+    }
+  });
+})
+
+app.put('/edit', (req,resp) => {
+  db.collection('post').updateOne({_id :parseInt(req.body.id)},{ $set : {title:req.body.title, date: req.body.date }},(err,result) => {
+    console.log('수정완료');
+    resp.redirect('/list');
   })
 })
