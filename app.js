@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
@@ -10,13 +11,13 @@ app.set('view engine', 'ejs');
 
 app.use('/public', express.static('public'));
 var db;
-MongoClient.connect('mongodb+srv://admin:qwer1234@cluster0.nn1apzs.mongodb.net/?retryWrites=true&w=majority', (err, client) => {
+MongoClient.connect(process.env.DB_URL, (err, client) => {
 
 if(err) return console.log(err);
 
 db = client.db('todoapp');
 
-app.listen(8080, () => {
+app.listen(process.env.PORT, () => {
   console.log('listening on 8080');
   });
 
@@ -170,4 +171,26 @@ passport.deserializeUser((id, done) => {
   });
 });
 
+app.get('/search', (req,resp) => {
+  console.log(req.query.value);
+  const searchCondition = [
+    {
+      $search: {
+        index: 'titleSearch',
+        text : {
+          query: req.query.value,
+          path: 'title'
+        }
+      }
+    },
+    // { $project : {title:1,_id:0, score: {$meta: "searchScore"}}},
+    { $sort : {_id : -1}},
+    { $limit: 10}
+  ]
+  
+  db.collection('post').aggregate(searchCondition).toArray((err,result) => {
+    console.log(result);
+    resp.render('search-list',{posts : result});
+  });
+})
 
