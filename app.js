@@ -47,22 +47,6 @@ app.get('/write', (req, resp) => {
   resp.render('write.ejs');
 });
 
-app.post('/add', (req,resp) => {
-  resp.send('전송완료');
-  db.collection('counter').findOne({name : 'totalPosts'}, (err,result) => {
-    console.log(result.totalPosts);
-    const totalCount = result.totalCount;
-
-    db.collection('post').insertOne({_id:totalCount+1, title:req.body.title, date:req.body.date},(err,result) => {
-      console.log("todo 저장완료");
-      db.collection('counter').updateOne({name:'totalPosts'},{ $inc : {totalCount:1}},(err, result) => {
-          if(err) {return console.log(err)}
-      })
-    });
-
-  });
-});
-
 app.get('/list', (req,resp) => {
 
   db.collection('post').find().toArray((err, result) => {
@@ -72,14 +56,7 @@ app.get('/list', (req,resp) => {
 
 });
 
-app.delete('/delete', (req, resp) => {
-  console.log(req.body);
-  req.body._id = parseInt(req.body._id);
-  db.collection('post').deleteOne(req.body, (err,result) => {
-    console.log('삭제완료');
-    resp.status(200).send({ message : '성공했습니다.'});
-  })
-});
+
 
 app.get('/detail/:id', (req, resp) => {
   
@@ -114,6 +91,7 @@ app.put('/edit', (req,resp) => {
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const session = require('express-session');
+const { route } = require('./routes/shop.js');
 
 app.use(session({secret : '비밀코드', resave : true, saveUninitialized: false}));
 app.use(passport.initialize());
@@ -171,6 +149,41 @@ passport.deserializeUser((id, done) => {
   });
 });
 
+app.delete('/delete', (req, resp) => {
+  console.log(req.body);
+  req.body._id = parseInt(req.body._id);
+
+  const deleteData = {_id : req.body._id, writer : req.user._id};
+
+  db.collection('post').deleteOne(deleteData, (err,result) => {
+    console.log('삭제완료');
+    if(err) console.log(err);
+    resp.status(200).send({ message : '성공했습니다.'});
+  })
+});
+
+app.post('/register',(req,resp) => {
+  db.collection('login').insertOne( {id : req.body.id, pw : req.body.pw}, (err,result) => {
+    resp.redirect('/');
+  });
+});
+
+app.post('/add', (req,resp) => {
+  resp.send('전송완료');
+  db.collection('counter').findOne({name : 'totalPosts'}, (err,result) => {
+    const totalCount = result.totalCount;
+    console.log(req.user);
+    const posts = {_id:totalCount+1, title:req.body.title, date:req.body.date, writer : req.user._id};
+
+    db.collection('post').insertOne(posts,(err,result) => {
+      db.collection('counter').updateOne({name:'totalPosts'},{ $inc : {totalCount:1}},(err, result) => {
+          if(result) {return console.log(result)};
+      })
+    });
+
+  });
+});
+
 app.get('/search', (req,resp) => {
   console.log(req.query.value);
   const searchCondition = [
@@ -194,3 +207,6 @@ app.get('/search', (req,resp) => {
   });
 })
 
+app.use('/shop', require('./routes/shop.js'));
+
+app.use('/board', require('./routes/board'));
