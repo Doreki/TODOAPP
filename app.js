@@ -108,4 +108,66 @@ app.put('/edit', (req,resp) => {
     console.log('수정완료');
     resp.redirect('/list');
   })
-})
+});
+
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const session = require('express-session');
+
+app.use(session({secret : '비밀코드', resave : true, saveUninitialized: false}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.get('/login', (req,resp) => {
+  resp.render('login.ejs')
+});
+
+app.post('/login', passport.authenticate('local', {
+  failureRedirect : '/fail'
+}), (req,resp) => {
+  resp.redirect('/')
+});
+
+app.get('/mypage', isLogin, (req,resp) => {
+  console.log(req.user);
+  resp.render('mypage.ejs', {user : req.user});
+});
+
+function isLogin(req, resp, next) {
+  if(req.user){
+    next();
+  } else {
+    resp.send('로그인 안하셨는데요?');
+  }
+}
+
+passport.use(new LocalStrategy({
+  usernameField: 'id',
+  passwordField: 'pw',
+  session: true,
+  passReqToCallback: false,
+}, (id, pw, done) => {
+  console.log(id, pw);
+  db.collection('login').findOne({ id: id }, function (err, result) {
+    if (err) return done(err)
+
+    if (!result) return done(null, false, { message: '존재하지않는 아이디요' })
+    if (pw == result.pw) {
+      return done(null, result)
+    } else {
+      return done(null, false, { message: '비번틀렸어요' })
+    }
+  })
+}));
+
+passport.serializeUser((user, done) => {
+  done(null, user.id)
+});
+
+passport.deserializeUser((id, done) => {
+  db.collection('login').findOne({id:id}, (err,result) => {
+    done(null, result);
+  });
+});
+
+
