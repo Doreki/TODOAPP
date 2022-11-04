@@ -210,3 +210,27 @@ app.get('/search', (req,resp) => {
 app.use('/shop', require('./routes/shop.js'));
 
 app.use('/board', require('./routes/board'));
+
+let multer = require('multer');
+const storage = multer.diskStorage({
+  destination: (req,file,cb) => {
+    cb(null, './public/image')
+  },
+  filename : (req,file,cb) => {
+    cb(null, file.originalname)
+  }
+});
+
+const upload = multer({storage: storage});
+
+app.get('/upload', (req,resp) => {
+  resp.render('upload.ejs')
+});
+
+app.post('/upload', upload.single('profile'), (req, resp) => {
+  resp.send('업로드완료');
+})
+
+app.get('/image/:imageName', (req,resp) => {
+  resp.sendFile(__dirname + '/public/image/'+req.params.imageName)
+})
