@@ -1,6 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const app = express();
+
+const http = require('http').createServer(app);
+const {Server} = require('socket.io');
+const io = new Server(http);
+
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended : true}));
 const MongoClient = require('mongodb').MongoClient;
@@ -17,7 +22,7 @@ if(err) return console.log(err);
 
 db = client.db('todoapp');
 
-app.listen(process.env.PORT, () => {
+http.listen(process.env.PORT, () => {
   console.log('listening on 8080');
   });
 
@@ -293,3 +298,22 @@ app.get('/message/:chatRoomId', isLogin, (req,resp) => {
     resp.write('data: ' + JSON.stringify([result.fullDocument])+ '\n\n');
   });
 });
+
+app.get('/socket', (req,resp) => {
+  resp.render('socket.ejs');
+})
+
+io.on('connection', (socket) => {
+  console.log('유저 접속됨');
+
+  socket.on('room1-send', (data) => {
+    io.to('room1').emit('broadcast', data);
+  });
+  socket.on('joinRomm', (data) => {
+    socket.join('room1');
+  });
+
+  socket.on('user-send', (data) => {
+    io.emit('broadcast', '반가워');
+  });
+})
