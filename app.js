@@ -173,14 +173,15 @@ app.post('/add', (req,resp) => {
   db.collection('counter').findOne({name : 'totalPosts'}, (err,result) => {
     const totalCount = result.totalCount;
     console.log(req.user);
-    const posts = {_id:totalCount+1, title:req.body.title, date:req.body.date, writer : req.user._id};
-
-    db.collection('post').insertOne(posts,(err,result) => {
-      db.collection('counter').updateOne({name:'totalPosts'},{ $inc : {totalCount:1}},(err, result) => {
-          if(result) {return console.log(result)};
-      })
+    
+    db.collection('login').findOne({_id : req.user._id} ,(err,result) => {
+      const posts = {_id:totalCount+1, title:req.body.title, date:req.body.date, writer : result.id, writerId : result._id};
+      db.collection('post').insertOne(posts,(err,result) => {
+        db.collection('counter').updateOne({name:'totalPosts'},{ $inc : {totalCount:1}},(err, result) => {
+            if(result) {return console.log(result)};
+        })
+      });
     });
-
   });
 });
 
@@ -234,3 +235,61 @@ app.post('/upload', upload.single('profile'), (req, resp) => {
 app.get('/image/:imageName', (req,resp) => {
   resp.sendFile(__dirname + '/public/image/'+req.params.imageName)
 })
+
+const{ ObjectId } = require('mongodb');
+app.post('/chat',(req,resp) => {
+  console.log(req.body);
+    db.collection('chatroom').insertOne({
+      title:"채팅",
+      member: [ObjectId(req.body.chatedUser), req.user._id],
+      date: new Date()
+    })
+    resp.send('채팅방이 만들어졌습니다.');
+})
+
+app.get('/chat', (req,resp) => {
+
+  db.collection('chatroom').find({member:req.user._id}).toArray((err,result) => {
+    console.log(result);
+    resp.render('chat.ejs', {chats : result});
+  });
+})
+
+app.post('/message',isLogin, (req,resp) => {
+  const message = {
+    parent : req.body.parent,
+    content : req.body.content,
+    userId : req.user._id, 
+    date : new Date()
+  }
+  db.collection('message').insertOne(message).then(() => {
+    console.log('DB저장성공');
+    resp.send('DB저장성공');
+  })
+});
+
+app.get('/message/:chatRoomId', isLogin, (req,resp) => {
+
+  resp.writeHead(200, {
+    "Connection" : "keep-alive",
+    "Content-Type" : "text/event-stream",
+    "Cache-Control": "no-cache",
+  });
+
+  db.collection('message').find({parent : req.params.chatRoomId}).toArray()
+  .then((result) => {
+    console.log(result);
+    resp.write('event: test\n');
+    resp.write('data: ' + JSON.stringify(result) + '\n\n');
+  })
+
+  const pipeline = [
+    { $match: {'fullDocument.parent' : req.params.chatRoomId} }
+  ];
+  const collection = db.collection('message');
+  const changeStream = collection.watch(pipeline);
+  changeStream.on('change', (result) => {
+    resp.write('event: test\n');
+    resp.write('data: ' + JSON.stringify([result.fullDocument])+ '\n\n');
+  });
+});

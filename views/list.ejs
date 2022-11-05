@@ -23,12 +23,14 @@
     <div class="container">
       <ul class="list-group">
         <% for (let i = 0; i < posts.length; i++){ %>
-        <li class="list-group-item">
-          <p>글 번호 : <%= posts[i]._id %> </p>
-          <h4><a href="/detail/<%= posts[i]._id %>" >할일 제목 : <%= posts[i].title %></a></h4>
-          <p>할일 마감날짜 : <%= posts[i].date %></p>
-          <button class="btn btn-danger delete" data-id="<%= posts[i]._id %>">삭제</button>
-        </li>
+          <li class="list-group-item">
+            <p>글 번호 : <%= posts[i]._id %> </p>
+            <h4><a href="/detail/<%= posts[i]._id %>" >할일 제목 : <%= posts[i].title %></a></h4>
+            <p>할일 마감날짜 : <%= posts[i].date %></p>
+            <p>글쓴이 : <%= posts[i].writer %></p>
+            <button class="btn btn-danger delete" data-id="<%= posts[i]._id %>">삭제</button>
+            <button class="btn btn-secondary chat" data-id="<%= posts[i].writerId %>">채팅방</button>
+          </li>
         <% } %>
       </ul>
     </div>
@@ -54,7 +56,21 @@
         }).fail((xhr, textStatus, errorThrown) => {
             console.log(xhr, textStatus, errorThrown);
         })
-      });   
+      });
+
+      $('.chat').click((e) => {
+        const chatedUser = e.target.dataset.id;
+      $.ajax({
+          method : "POST",
+          url : '/chat',
+          data: {chatedUser : chatedUser}
+        }).done((result) => {
+            alert('채팅방이 만들어졌습니다.');
+            location.reload();
+        }).fail((xhr, textStatus, errorThrown) => {
+            console.log(xhr, textStatus, errorThrown);
+        })
+      }); 
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
